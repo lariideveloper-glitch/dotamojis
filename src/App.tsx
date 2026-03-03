@@ -427,7 +427,7 @@ export default function App() {
                         ref={messageRef}
                         value={editorDraft.message}
                         onChange={(val) => setEditorDraft(p => ({ ...p, message: val }))}
-                        placeholder="Digite sua mensagem de chat roleta..."
+                        placeholder="Digite seu novo bind..."
                         emojiMap={emojiByUnicode}
                         className="min-h-[100px] w-full bg-black/20 border border-white/[0.08] focus:border-cyan-500/50 resize-y rounded-xl p-4 pr-36 text-sm leading-relaxed text-slate-200"
                         onKeyDown={(e) => {
