@@ -3,5 +3,5 @@ import { EmojiCatalog } from "../types/domain";
 
 export function loadEmojiCatalog(): EmojiCatalog {
     // In the Web version we just return the imported JSON directly
-    return catalogData as EmojiCatalog;
+    return catalogData as unknown as EmojiCatalog;
 }
