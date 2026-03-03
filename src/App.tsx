@@ -13,7 +13,6 @@ import {
   Sparkles,
   Star,
   Trash2,
-
   CopyPlus,
   X,
   HelpCircle,
@@ -23,6 +22,11 @@ import {
   Terminal,
   Gamepad2,
   Clipboard,
+  Heart,
+  MessageCircle,
+  Smile,
+  ShieldCheck,
+  ExternalLink,
 } from "lucide-react";
 import { normalizeSearch } from "./lib/text";
 import { toDotaKeyFromKeyboardEvent, PROTECTED_KEYS } from "./lib/keymap";
@@ -74,6 +78,10 @@ export default function App() {
 
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
+
+  const [showWelcome, setShowWelcome] = useState(() => !localStorage.getItem('dotamojis_welcomed'));
+  const [welcomeStep, setWelcomeStep] = useState(0);
+  const [dontShowAgain, setDontShowAgain] = useState(true);
 
   const [query, setQuery] = useState("");
   const [modeFilter, setModeFilter] = useState<BindModeFilter>("all");
@@ -746,7 +754,7 @@ export default function App() {
                         <div>
                           <h3 className="text-base font-semibold text-white mb-2">Abra a pasta do Dota</h3>
                           <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto mb-3">
-                            No <span className="text-white font-medium">Steam</span> → botão direito no <span className="text-white font-medium">Dota 2</span> → <span className="text-white font-medium">Gerenciar</span> → <span className="text-white font-medium">Ver arquivos locais</span>
+                            No <span className="text-white font-medium">Steam</span> → <span className="text-white font-medium">Biblioteca</span> → botão direito no <span className="text-white font-medium">Dota 2</span> → <span className="text-white font-medium">Arquivos Instalados</span> → <span className="text-white font-medium">Explorar</span>
                           </p>
                           <code className="inline-block text-xs text-amber-400/80 bg-black/50 border border-white/[0.06] rounded-lg px-4 py-2 font-mono">
                             game → dota → cfg
@@ -817,6 +825,158 @@ export default function App() {
                       className="bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white h-8 border-0"
                     >
                       Entendi!
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* ━━━ WELCOME MODAL (First Visit) ━━━ */}
+      <AnimatePresence>
+        {showWelcome && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", stiffness: 350, damping: 28 }}
+              className="relative w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#0d1221]/95 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden"
+            >
+              {/* Progress bar */}
+              <div className="h-1 bg-white/[0.05]">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-pink-500 via-rose-500 to-violet-500"
+                  animate={{ width: `${((welcomeStep + 1) / 3) * 100}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+
+              {/* Content */}
+              <div className="px-6 pt-6 pb-3 min-h-[260px] flex flex-col justify-center">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={welcomeStep}
+                    initial={{ opacity: 0, x: 40 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -40 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    {welcomeStep === 0 && (
+                      <div className="flex flex-col items-center text-center gap-4">
+                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-pink-500/20 to-violet-500/10 flex items-center justify-center border border-pink-500/15 shadow-lg shadow-pink-500/5">
+                          <Sparkles className="h-8 w-8 text-pink-400" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-bold text-white mb-1">Bem-vindo ao Dotamojis!</h2>
+                          <p className="text-xs text-pink-400/60 font-medium uppercase tracking-wider mb-3">Gerador de Binds com Emojis</p>
+                          <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto">
+                            <span className="text-white font-medium">Binds</span> são atalhos de teclado que enviam mensagens automaticamente no chat do Dota 2. Com o Dotamojis, você cria binds <span className="text-pink-400 font-medium">personalizados com emojis</span> de forma rápida e fácil!
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {welcomeStep === 1 && (
+                      <div className="flex flex-col items-center text-center gap-4">
+                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/10 flex items-center justify-center border border-violet-500/15 shadow-lg shadow-violet-500/5">
+                          <Smile className="h-8 w-8 text-violet-400" />
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-bold text-white mb-2">Emojis sem comprar?!</h2>
+                          <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto">
+                            Sim! Os emojis do Dota normalmente precisam ser desbloqueados no Battle Pass. Mas existe um <span className="text-violet-400 font-medium">truque via autoexec</span>: usando os códigos unicode dos emojis diretamente nos comandos de bind, eles aparecem no chat <span className="text-white font-medium">mesmo sem tê-los na conta</span>!
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {welcomeStep === 2 && (
+                      <div className="flex flex-col items-center text-center gap-4">
+                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/10 flex items-center justify-center border border-emerald-500/15 shadow-lg shadow-emerald-500/5">
+                          <ShieldCheck className="h-8 w-8 text-emerald-400" />
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-bold text-white mb-2">É seguro?</h2>
+                          <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto">
+                            <span className="text-emerald-400 font-medium">Sim, totalmente!</span> O autoexec.cfg é apenas um <span className="text-white font-medium">arquivo de texto</span> da própria Steam que configura comandos do jogo. Não altera arquivos do sistema, não instala nada e <span className="text-white font-medium">não há risco de ban</span>.
+                          </p>
+                          <a
+                            href="https://developer.valvesoftware.com/wiki/Autoexec"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Saiba mais sobre autoexec (Valve Wiki)
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Footer: checkbox + dots + navigation */}
+              {welcomeStep === 2 && (
+                <div className="flex items-center justify-center px-6 pb-2">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={dontShowAgain}
+                      onChange={(e) => setDontShowAgain(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-white/20 bg-white/5 accent-pink-500 cursor-pointer"
+                    />
+                    <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors">Não mostrar novamente</span>
+                  </label>
+                </div>
+              )}
+              <div className="flex items-center justify-between px-6 pb-5 pt-2">
+                <div className="flex gap-2">
+                  {[0, 1, 2].map((i) => (
+                    <button
+                      key={i}
+                      onClick={() => setWelcomeStep(i)}
+                      className={`h-2 rounded-full transition-all duration-300 ${i === welcomeStep ? "w-6 bg-gradient-to-r from-pink-500 to-rose-500" : "w-2 bg-white/[0.15] hover:bg-white/[0.3]"
+                        }`}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  {welcomeStep > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setWelcomeStep(s => s - 1)}
+                      className="text-slate-400 hover:text-white h-8"
+                    >
+                      Anterior
+                    </Button>
+                  )}
+                  {welcomeStep < 2 ? (
+                    <Button
+                      size="sm"
+                      onClick={() => setWelcomeStep(s => s + 1)}
+                      className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white h-8 border-0"
+                    >
+                      Próximo
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => { setShowWelcome(false); if (dontShowAgain) localStorage.setItem('dotamojis_welcomed', '1'); }}
+                      className="bg-gradient-to-r from-pink-600 to-violet-600 hover:from-pink-500 hover:to-violet-500 text-white h-8 border-0"
+                    >
+                      Começar! ✨
                     </Button>
                   )}
                 </div>
