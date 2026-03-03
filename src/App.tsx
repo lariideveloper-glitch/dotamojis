@@ -783,12 +783,12 @@ export default function App() {
                         </div>
                         <div>
                           <h3 className="text-base font-semibold text-white mb-2">Abra a pasta do Dota</h3>
-                          <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto mb-3">
-                            Encontre a pasta do jogo. O caminho padrão no Windows geralmente é:
-                          </p>
-                          <code className="inline-block text-[10px] text-amber-400/80 bg-black/50 border border-white/[0.06] rounded-lg px-3 py-2 font-mono break-all max-w-[280px]">
-                            C:\Program Files (x86)\Steam\steamapps\common\dota 2 beta\game\dota\cfg
-                          </code>
+                          <div className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto mb-3 space-y-2">
+                            <p>Encontre a pasta do jogo. O caminho padrão no Windows geralmente é:</p>
+                            <code className="inline-block text-[10px] text-amber-400/80 bg-black/50 border border-white/[0.06] rounded-lg px-3 py-2 font-mono break-all max-w-[280px]">
+                              C:\Program Files (x86)\Steam\steamapps\common\dota 2 beta\game\dota\cfg
+                            </code>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -803,6 +803,11 @@ export default function App() {
                           <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto">
                             Basta pegar o arquivo <span className="text-amber-400 font-medium">autoexec.cfg</span> que você acabou de baixar e jogar dentro dessa pasta <span className="text-white font-medium">cfg</span> do Dota!
                           </p>
+                          <div className="mt-2 bg-indigo-500/5 border border-indigo-500/10 p-2.5 rounded-lg flex flex-col gap-1 items-center max-w-xs mx-auto">
+                            <p className="text-[11px] text-indigo-300/80">
+                              Você pode verificar o arquivo no <span className="text-white font-medium">Bloco de Notas</span> antes, ou analisar no site <a href="https://www.virustotal.com" target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2">Vírus Total</a> por segurança ou caso tenha dúvidas.
+                            </p>
+                          </div>
                           <div className="mt-3 flex items-center gap-2 justify-center p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
                             <Gamepad2 className="h-4 w-4 text-emerald-400" />
                             <span className="text-xs text-emerald-300/80 font-medium">Pronto! Abra o Dota e jogue!</span>
