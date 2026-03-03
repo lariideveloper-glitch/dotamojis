@@ -13,7 +13,7 @@ import {
   Sparkles,
   Star,
   Trash2,
-  CopyPlus,
+  Pencil,
   X,
   HelpCircle,
   Check,
@@ -82,6 +82,14 @@ export default function App() {
   const [dontShowAgain, setDontShowAgain] = useState(true);
 
   const [rightTab, setRightTab] = useState<"binds" | "preview">("binds");
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    confirmLabel: string;
+    variant: "danger" | "warning";
+    onConfirm: () => void;
+  }>({ open: false, title: "", message: "", confirmLabel: "Confirmar", variant: "danger", onConfirm: () => { } });
   const [query, setQuery] = useState("");
   const [modeFilter, setModeFilter] = useState<BindModeFilter>("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -267,12 +275,21 @@ export default function App() {
   }
 
   function handleDelete(bind: BindEntry) {
-    if (!window.confirm(`Deletar bind da tecla ${bind.key}?`)) return;
-    store.deleteBind(bind.key);
-    if (editorDraft.oldKey === bind.key || editorDraft.key === bind.key) {
-      openCreate();
-    }
-    showToast("Bind removido!");
+    setConfirmModal({
+      open: true,
+      title: "Deletar bind",
+      message: `Tem certeza que deseja deletar o bind da tecla "${bind.key}"?`,
+      confirmLabel: "Deletar",
+      variant: "danger",
+      onConfirm: () => {
+        store.deleteBind(bind.key);
+        if (editorDraft.oldKey === bind.key || editorDraft.key === bind.key) {
+          openCreate();
+        }
+        showToast("Bind removido!");
+        setConfirmModal(m => ({ ...m, open: false }));
+      },
+    });
   }
 
   function handleToggleFavorite(bind: BindEntry) {
@@ -286,9 +303,22 @@ export default function App() {
       return;
     }
     if (PROTECTED_KEYS.has(k)) {
-      if (!window.confirm(`A tecla "${k}" é padrão do Dota (spells/items). Tem certeza que deseja usar?`)) {
-        return;
-      }
+      setConfirmModal({
+        open: true,
+        title: "Tecla protegida",
+        message: `A tecla "${k}" é usada por padrão no Dota 2 (spells/items). Tem certeza que deseja usá-la para um bind?`,
+        confirmLabel: "Usar mesmo assim",
+        variant: "warning",
+        onConfirm: () => {
+          store.upsertBind(editorDraft.oldKey, k, editorDraft.mode, editorDraft.message);
+          openCreate();
+          setRightTab("binds");
+          showToast("Bind salvo com sucesso!");
+          setError("");
+          setConfirmModal(m => ({ ...m, open: false }));
+        },
+      });
+      return;
     }
     store.upsertBind(editorDraft.oldKey, k, editorDraft.mode, editorDraft.message);
     openCreate();
@@ -431,96 +461,45 @@ export default function App() {
                         onChange={(val) => setEditorDraft(p => ({ ...p, message: val }))}
                         placeholder="Digite seu novo bind..."
                         emojiMap={emojiByUnicode}
-                        className="min-h-[100px] w-full bg-black/20 border border-white/[0.08] focus:border-cyan-500/50 resize-y rounded-xl p-4 pr-36 text-sm leading-relaxed text-slate-200"
-                        onKeyDown={(e) => {
-                          if (e.altKey && e.key.toLowerCase() === "e") {
-                            e.preventDefault();
-                            setShowEmojiPicker(p => !p);
-                          }
-                        }}
+                        className="min-h-[100px] w-full bg-black/20 border border-white/[0.08] focus:border-cyan-500/50 resize-y rounded-xl p-4 text-sm leading-relaxed text-slate-200"
                       />
-                      <button
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        className={`absolute top-2.5 right-2.5 flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg transition-all ${showEmojiPicker ? "bg-amber-500/20 text-amber-400 shadow-sm shadow-amber-500/10" : "text-amber-400/70 bg-black/30 hover:bg-amber-500/10 hover:text-amber-400 border border-white/[0.05]"
-                          }`}
-                      >
-                        <Sparkles className="h-3 w-3" />
-                        Emojis
-                      </button>
                     </div>
                   </div>
 
-                  <AnimatePresence>
-                    {showEmojiPicker && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="rounded-xl border border-white/[0.08] bg-black/40 shadow-inner p-4 space-y-4">
-                          <div className="flex items-center gap-2">
-                            <div className="relative flex-1">
-                              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                              <Input
-                                autoFocus
-                                value={emojiSearch}
-                                onChange={(e) => setEmojiSearch(e.target.value)}
-                                placeholder="Procurar emojis (ex: laugh, roshan)..."
-                                className="pl-9 h-9 text-sm bg-black/40 border-white/[0.05]"
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-1 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
-                            {filteredEmojis.map((emoji) => (
-                              <button
-                                key={emoji.code}
-                                onClick={() => insertEmoji(emoji)}
-                                className="flex h-10 items-center justify-center rounded-lg bg-white/[0.02] hover:bg-cyan-500/20 hover:scale-110 active:scale-95 transition-all outline-none border border-transparent hover:border-cyan-500/30"
-                                title={emoji.name}
-                              >
-                                {emoji.gifUrl ? (
-                                  <img src={emoji.gifUrl} alt={emoji.name} className="h-6 w-6 object-contain" />
-                                ) : (
-                                  <span className="text-lg">{emoji.unicode}</span>
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                          {filteredEmojis.length === 0 && (
-                            <p className="text-center text-sm text-slate-500 py-4">Nenhum emoji encontrado.</p>
+                  {/* ─── EMOJI GRID (always visible) ─── */}
+                  <div className="rounded-xl border border-white/[0.08] bg-black/40 shadow-inner p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Emojis</span>
+                      <div className="relative flex-1 ml-1">
+                        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                        <Input
+                          value={emojiSearch}
+                          onChange={(e) => setEmojiSearch(e.target.value)}
+                          placeholder="Buscar..."
+                          className="pl-8 h-8 text-xs bg-black/40 border-white/[0.05]"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-1 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
+                      {filteredEmojis.map((emoji) => (
+                        <button
+                          key={emoji.code}
+                          onClick={() => insertEmoji(emoji)}
+                          className="flex h-9 items-center justify-center rounded-lg bg-white/[0.02] hover:bg-cyan-500/20 hover:scale-110 active:scale-95 transition-all outline-none border border-transparent hover:border-cyan-500/30"
+                          title={emoji.name}
+                        >
+                          {emoji.gifUrl ? (
+                            <img src={emoji.gifUrl} alt={emoji.name} className="h-5 w-5 object-contain" />
+                          ) : (
+                            <span className="text-base">{emoji.unicode}</span>
                           )}
-                        </div>
-                      </motion.div>
+                        </button>
+                      ))}
+                    </div>
+                    {filteredEmojis.length === 0 && (
+                      <p className="text-center text-xs text-slate-500 py-2">Nenhum emoji encontrado.</p>
                     )}
-                  </AnimatePresence>
-                </div>
-
-                {/* ─── HOW IT WORKS ─── */}
-                <div className="mt-4 rounded-xl border border-white/[0.05] bg-gradient-to-br from-white/[0.02] to-transparent p-5 space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-gradient-pink">Como funciona?</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.03]">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pink-500/15 text-pink-400 text-xs font-bold">1</span>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-300">Escolha a tecla</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">Clique e pressione qualquer tecla do teclado.</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.03]">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-violet-400 text-xs font-bold">2</span>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-300">Escreva a mensagem</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">Use emojis do Dota para personalizar!</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.03]">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-500/15 text-cyan-400 text-xs font-bold">3</span>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-300">Baixe o autoexec</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">Coloque em <code className="text-slate-400">/cfg/</code> e jogue!</p>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -652,8 +631,8 @@ export default function App() {
                                   <button onClick={() => handleToggleFavorite(bind)} className={`p-1.5 rounded-md transition-colors ${bind.favorite ? 'text-amber-400 bg-amber-400/10' : 'text-slate-500 hover:text-amber-400 hover:bg-amber-400/10'}`}>
                                     <Star className="h-3.5 w-3.5" />
                                   </button>
-                                  <button onClick={() => openDuplicate(bind)} className="p-1.5 rounded-md text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 transition-colors">
-                                    <CopyPlus className="h-3.5 w-3.5" />
+                                  <button onClick={() => openEdit(bind)} className="p-1.5 rounded-md text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 transition-colors">
+                                    <Pencil className="h-3.5 w-3.5" />
                                   </button>
                                   <button onClick={() => handleDelete(bind)} className="p-1.5 rounded-md text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 transition-colors">
                                     <Trash2 className="h-3.5 w-3.5" />
@@ -1007,6 +986,58 @@ export default function App() {
                       Começar!
                     </Button>
                   )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ━━━ CUSTOM CONFIRM MODAL ━━━ */}
+      <AnimatePresence>
+        {confirmModal.open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmModal(m => ({ ...m, open: false }))} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="relative w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0d1221]/95 backdrop-blur-xl shadow-2xl shadow-black/50 p-6"
+            >
+              <div className="flex flex-col items-center text-center gap-4">
+                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center border ${confirmModal.variant === "danger"
+                    ? "bg-gradient-to-br from-rose-500/20 to-rose-600/10 border-rose-500/20"
+                    : "bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-amber-500/20"
+                  }`}>
+                  <AlertTriangle className={`h-7 w-7 ${confirmModal.variant === "danger" ? "text-rose-400" : "text-amber-400"}`} />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-white mb-1">{confirmModal.title}</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed">{confirmModal.message}</p>
+                </div>
+                <div className="flex gap-2 w-full mt-1">
+                  <Button
+                    variant="ghost"
+                    className="flex-1 text-slate-400 hover:text-white h-9"
+                    onClick={() => setConfirmModal(m => ({ ...m, open: false }))}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    className={`flex-1 h-9 border-0 text-white ${confirmModal.variant === "danger"
+                        ? "bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600"
+                        : "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600"
+                      }`}
+                    onClick={confirmModal.onConfirm}
+                  >
+                    {confirmModal.confirmLabel}
+                  </Button>
                 </div>
               </div>
             </motion.div>
