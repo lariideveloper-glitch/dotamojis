@@ -410,89 +410,79 @@ export default function App() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-auto p-4 md:p-6 custom-scrollbar">
-              <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="max-w-3xl mx-auto space-y-6 py-2">
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tecla de Ativação</label>
-                    <button
-                      className={`w-full group relative flex h-14 items-center justify-between rounded-xl border-2 transition-all ${keyCaptureOpen ? "border-cyan-500 bg-cyan-500/5 shadow-[0_0_15px_rgba(6,182,212,0.15)]" : "border-white/[0.08] bg-black/20 hover:border-white/20"
-                        } px-4`}
-                      onClick={() => setKeyCaptureOpen(!keyCaptureOpen)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <kbd className={`flex h-8 min-w-[32px] items-center justify-center rounded-md border font-mono text-sm shadow-sm transition-colors ${editorDraft.key ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-300" : "border-white/10 bg-white/5 text-slate-400"
-                          }`}>
-                          {editorDraft.key || "?"}
-                        </kbd>
-                        <span className="text-sm font-medium text-slate-300">
-                          {keyCaptureOpen ? "Pressione a nova tecla agora... (Esc para cancelar)" : editorDraft.key ? "Clique para mudar a tecla" : "Clique para definir uma tecla"}
-                        </span>
-                      </div>
-                    </button>
-                  </div>
+            <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-5">
+              <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="max-w-3xl mx-auto flex flex-col gap-3 h-full">
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Canal de Chat</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => setEditorDraft(p => ({ ...p, mode: "say" }))}
-                        className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all ${editorDraft.mode === "say" ? "border-cyan-500 bg-cyan-500/10 text-cyan-300 shadow-md shadow-cyan-500/10" : "border-white/[0.05] bg-black/20 text-slate-400 hover:bg-white/5"
-                          }`}
-                      >
-                        All Chat (say)
-                      </button>
-                      <button
-                        onClick={() => setEditorDraft(p => ({ ...p, mode: "say_team" }))}
-                        className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all ${editorDraft.mode === "say_team" ? "border-violet-500 bg-violet-500/10 text-violet-300 shadow-md shadow-violet-500/10" : "border-white/[0.05] bg-black/20 text-slate-400 hover:bg-white/5"
-                          }`}
-                      >
-                        Team Chat (say_team)
-                      </button>
+                {/* Row 1: Key Capture + Chat Mode on same line */}
+                <div className="flex gap-2 items-stretch">
+                  <button
+                    className={`flex-1 group relative flex h-12 items-center rounded-xl border-2 transition-all ${keyCaptureOpen ? "border-cyan-500 bg-cyan-500/5 shadow-[0_0_15px_rgba(6,182,212,0.15)]" : "border-white/[0.08] bg-black/20 hover:border-white/20"
+                      } px-3`}
+                    onClick={() => setKeyCaptureOpen(!keyCaptureOpen)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <kbd className={`flex h-7 min-w-[28px] items-center justify-center rounded-md border font-mono text-xs shadow-sm transition-colors ${editorDraft.key ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-300" : "border-white/10 bg-white/5 text-slate-400"
+                        }`}>
+                        {editorDraft.key || "?"}
+                      </kbd>
+                      <span className="text-xs font-medium text-slate-400 truncate">
+                        {keyCaptureOpen ? "Pressione a tecla..." : editorDraft.key ? "Mudar tecla" : "Definir tecla"}
+                      </span>
                     </div>
-                  </div>
+                  </button>
+                  <select
+                    value={editorDraft.mode}
+                    onChange={(e) => setEditorDraft(p => ({ ...p, mode: e.target.value as "say" | "say_team" }))}
+                    className={`h-12 rounded-xl border-2 px-3 text-xs font-medium outline-none transition-all cursor-pointer ${editorDraft.mode === "say"
+                        ? "border-cyan-500/30 bg-cyan-500/5 text-cyan-300"
+                        : "border-violet-500/30 bg-violet-500/5 text-violet-300"
+                      }`}
+                  >
+                    <option value="say">All Chat</option>
+                    <option value="say_team">Team Chat</option>
+                  </select>
+                </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Mensagem</label>
-                    <div className="relative group">
-                      <RichEditor
-                        ref={messageRef}
-                        value={editorDraft.message}
-                        onChange={(val) => setEditorDraft(p => ({ ...p, message: val }))}
-                        placeholder="Digite seu novo bind..."
-                        emojiMap={emojiByUnicode}
-                        className="min-h-[100px] w-full bg-black/20 border border-white/[0.08] focus:border-cyan-500/50 resize-y rounded-xl p-4 text-sm leading-relaxed text-slate-200"
+                {/* Row 2: Message textarea (compact) */}
+                <div className="relative">
+                  <RichEditor
+                    ref={messageRef}
+                    value={editorDraft.message}
+                    onChange={(val) => setEditorDraft(p => ({ ...p, message: val }))}
+                    placeholder="Digite seu novo bind..."
+                    emojiMap={emojiByUnicode}
+                    className="min-h-[72px] w-full bg-black/20 border border-white/[0.08] focus:border-cyan-500/50 resize-none rounded-xl p-3 text-sm leading-relaxed text-slate-200"
+                  />
+                </div>
+
+                {/* Row 3: Emoji grid — fills remaining space */}
+                <div className="flex-1 min-h-0 flex flex-col rounded-xl border border-white/[0.08] bg-black/40 shadow-inner overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 pt-3 pb-2 shrink-0">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Emojis</span>
+                    <div className="relative flex-1 ml-1">
+                      <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
+                      <Input
+                        value={emojiSearch}
+                        onChange={(e) => setEmojiSearch(e.target.value)}
+                        placeholder="Buscar..."
+                        className="pl-7 h-7 text-[11px] bg-black/40 border-white/[0.05]"
                       />
                     </div>
                   </div>
-
-                  {/* ─── EMOJI GRID (always visible) ─── */}
-                  <div className="rounded-xl border border-white/[0.08] bg-black/40 shadow-inner p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Emojis</span>
-                      <div className="relative flex-1 ml-1">
-                        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-                        <Input
-                          value={emojiSearch}
-                          onChange={(e) => setEmojiSearch(e.target.value)}
-                          placeholder="Buscar..."
-                          className="pl-8 h-8 text-xs bg-black/40 border-white/[0.05]"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-1 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto px-3 pb-3 custom-scrollbar">
+                    <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-1">
                       {filteredEmojis.map((emoji) => (
                         <button
                           key={emoji.code}
                           onClick={() => insertEmoji(emoji)}
-                          className="flex h-9 items-center justify-center rounded-lg bg-white/[0.02] hover:bg-cyan-500/20 hover:scale-110 active:scale-95 transition-all outline-none border border-transparent hover:border-cyan-500/30"
+                          className="flex h-8 items-center justify-center rounded-lg bg-white/[0.02] hover:bg-cyan-500/20 hover:scale-110 active:scale-95 transition-all outline-none border border-transparent hover:border-cyan-500/30"
                           title={emoji.name}
                         >
                           {emoji.gifUrl ? (
                             <img src={emoji.gifUrl} alt={emoji.name} className="h-5 w-5 object-contain" />
                           ) : (
-                            <span className="text-base">{emoji.unicode}</span>
+                            <span className="text-sm">{emoji.unicode}</span>
                           )}
                         </button>
                       ))}
@@ -1012,8 +1002,8 @@ export default function App() {
             >
               <div className="flex flex-col items-center text-center gap-4">
                 <div className={`h-14 w-14 rounded-2xl flex items-center justify-center border ${confirmModal.variant === "danger"
-                    ? "bg-gradient-to-br from-rose-500/20 to-rose-600/10 border-rose-500/20"
-                    : "bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-amber-500/20"
+                  ? "bg-gradient-to-br from-rose-500/20 to-rose-600/10 border-rose-500/20"
+                  : "bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-amber-500/20"
                   }`}>
                   <AlertTriangle className={`h-7 w-7 ${confirmModal.variant === "danger" ? "text-rose-400" : "text-amber-400"}`} />
                 </div>
@@ -1031,8 +1021,8 @@ export default function App() {
                   </Button>
                   <Button
                     className={`flex-1 h-9 border-0 text-white ${confirmModal.variant === "danger"
-                        ? "bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600"
-                        : "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600"
+                      ? "bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600"
+                      : "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600"
                       }`}
                     onClick={confirmModal.onConfirm}
                   >
