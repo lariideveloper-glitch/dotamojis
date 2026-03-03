@@ -351,7 +351,7 @@ export default function App() {
   const managedCount = dashboard.snapshot?.allBinds.length || 0;
 
   return (
-    <div className="dark-bg min-h-screen relative overflow-hidden flex flex-col items-center">
+    <div className="dark-bg h-[100dvh] relative overflow-hidden flex flex-col items-center">
       {/* ── Background particles ── */}
       <div className="bg-particle top-16 left-[8%] h-28 w-28 bg-rose-500/[0.04] blur-2xl" />
       <div
@@ -367,7 +367,7 @@ export default function App() {
         style={{ animationDelay: "-3s" }}
       />
 
-      <div className="w-full max-w-7xl h-screen flex flex-col p-4 md:p-6 z-10 gap-4">
+      <div className="w-full max-w-7xl h-full flex flex-col p-4 md:p-6 z-10 gap-3">
 
         {/* ━━━ ERROR BANNER ━━━ */}
         <AnimatePresence>
@@ -410,8 +410,8 @@ export default function App() {
               </button>
             </div>
 
-            <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-5">
-              <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="max-w-3xl mx-auto flex flex-col gap-3 h-full">
+            <div className="flex-1 min-h-0 flex flex-col p-4 md:p-5">
+              <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 min-h-0 w-full max-w-3xl mx-auto flex flex-col gap-3">
 
                 {/* Row 1: Key Capture + Chat Mode on same line */}
                 <div className="flex gap-2 items-stretch">
@@ -434,8 +434,8 @@ export default function App() {
                     value={editorDraft.mode}
                     onChange={(e) => setEditorDraft(p => ({ ...p, mode: e.target.value as "say" | "say_team" }))}
                     className={`h-12 rounded-xl border-2 px-3 text-xs font-medium outline-none transition-all cursor-pointer ${editorDraft.mode === "say"
-                        ? "border-cyan-500/30 bg-cyan-500/5 text-cyan-300"
-                        : "border-violet-500/30 bg-violet-500/5 text-violet-300"
+                      ? "border-cyan-500/30 bg-cyan-500/5 text-cyan-300"
+                      : "border-violet-500/30 bg-violet-500/5 text-violet-300"
                       }`}
                   >
                     <option value="say">All Chat</option>
@@ -470,7 +470,7 @@ export default function App() {
                       />
                     </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto px-3 pb-3 custom-scrollbar">
+                  <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-3 custom-scrollbar">
                     <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-1">
                       {filteredEmojis.map((emoji) => (
                         <button
