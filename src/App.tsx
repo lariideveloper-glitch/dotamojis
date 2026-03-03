@@ -13,13 +13,16 @@ import {
   Sparkles,
   Star,
   Trash2,
-  Pencil,
+
   CopyPlus,
   X,
-  ListFilter,
-  Download,
+  HelpCircle,
   Check,
   Info,
+  FolderOpen,
+  Terminal,
+  Gamepad2,
+  Clipboard,
 } from "lucide-react";
 import { normalizeSearch } from "./lib/text";
 import { toDotaKeyFromKeyboardEvent, PROTECTED_KEYS } from "./lib/keymap";
@@ -27,7 +30,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { renderManagedBlock } from "./lib/autoexec";
 
 type BindModeFilter = "all" | "say" | "say_team";
-type RightTab = "binds" | "preview";
 
 type EditorDraft = {
   oldKey: string;
@@ -70,12 +72,12 @@ export default function App() {
   const [catalog] = useState(loadEmojiCatalog());
   const [error, setError] = useState("");
 
-  const [rightTab, setRightTab] = useState<RightTab>("binds");
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
 
   const [query, setQuery] = useState("");
   const [modeFilter, setModeFilter] = useState<BindModeFilter>("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [recentOnly, setRecentOnly] = useState(false);
 
   const [editorDraft, setEditorDraft] = useState<EditorDraft>(EMPTY_DRAFT);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -109,7 +111,7 @@ export default function App() {
     const filtered = all.filter((bind) => {
       if (modeFilter !== "all" && bind.mode !== modeFilter) return false;
       if (favoritesOnly && !bind.favorite) return false;
-      if (recentOnly && !bind.recent) return false;
+
 
       if (!q) return true;
       const haystack = `${bind.key} ${bind.mode} ${bind.message} ${bind.commandRaw}`.toLowerCase();
@@ -121,7 +123,7 @@ export default function App() {
       if (a.recent !== b.recent) return a.recent ? -1 : 1;
       return a.key.localeCompare(b.key);
     });
-  }, [dashboard.snapshot?.allBinds, query, modeFilter, favoritesOnly, recentOnly]);
+  }, [dashboard.snapshot?.allBinds, query, modeFilter, favoritesOnly]);
 
   const filteredEmojis = useMemo(() => {
     const term = normalizeSearch(emojiSearch);
@@ -135,17 +137,7 @@ export default function App() {
       .slice(0, 240);
   }, [catalog, emojiSearch]);
 
-  // Extract emojis purely to show little chips in the UI
-  // Real parsing relies on unicode matches
-  const extractEmojiItems = (text: string) => {
-    const out: EmojiItem[] = [];
-    if (!text) return out;
-    for (const char of text) {
-      const match = emojiByUnicode.get(char);
-      if (match && !out.includes(match)) out.push(match);
-    }
-    return out;
-  };
+
 
   // Inline rich text emoji renderer
   const EmojiText = ({ text, className }: { text: string; className?: string }) => {
@@ -292,7 +284,6 @@ export default function App() {
       }
     }
     store.upsertBind(editorDraft.oldKey, k, editorDraft.mode, editorDraft.message);
-    setRightTab("binds");
     openCreate();
     showToast("Bind salvo com sucesso!");
     setError("");
@@ -309,18 +300,6 @@ export default function App() {
     }
   }
 
-  function downloadAutoexec() {
-    const blob = new Blob([livePreviewString], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "autoexec.cfg";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    showToast("Download iniciado!");
-  }
 
   async function copyAutoexec() {
     try {
@@ -384,9 +363,13 @@ export default function App() {
                   {editorDraft.oldKey ? "Editar Bind" : "Novo Bind"}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
-                Binds com emojis para o Dota 2 ✨
-              </p>
+              <button
+                onClick={() => setShowTutorial(true)}
+                className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium hover:text-pink-400 transition-colors px-2 py-1 rounded-lg hover:bg-pink-500/10"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                Como instalar?
+              </button>
             </div>
 
             <div className="flex-1 overflow-auto p-4 md:p-6 custom-scrollbar">
@@ -546,179 +529,125 @@ export default function App() {
             </div>
           </div>
 
-          {/* RIGHT: Binds List + Preview Panel (Tabbed) */}
+          {/* RIGHT: Binds List Panel */}
           <div className="w-full lg:w-[480px] xl:w-[560px] flex flex-col shrink-0 min-h-[400px] glass-right rounded-2xl overflow-hidden relative">
-            {/* Tabs */}
-            <div className="flex items-center gap-1 border-b border-white/[0.04] p-2 bg-white/[0.01] header-accent-cyan">
-              <button
-                onClick={() => setRightTab("binds")}
-                className={`tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${rightTab === "binds" ? "bg-white/[0.06] text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]"}`}
-              >
-                <ListFilter className="h-4 w-4" />
-                Meus Binds
-              </button>
-              <button
-                onClick={() => setRightTab("preview")}
-                className={`tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${rightTab === "preview" ? "bg-white/[0.06] text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]"}`}
-              >
-                <Copy className="h-4 w-4" />
-                Preview Autoexec
-              </button>
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-white/[0.04] p-3 px-5 bg-white/[0.01] header-accent-cyan">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-white">Meus Binds</h2>
+                {managedCount > 0 && (
+                  <span className="text-[11px] text-cyan-400/80 bg-cyan-500/10 px-2 py-0.5 rounded-full font-medium">{managedCount}</span>
+                )}
+              </div>
+              {managedCount > 0 && (
+                <Button size="sm" onClick={copyAutoexec} className="bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-600/30 hover:text-cyan-300 h-8 text-xs">
+                  <Copy className="h-3.5 w-3.5 mr-1.5" />
+                  Copiar todos
+                </Button>
+              )}
             </div>
 
             <div className="flex-1 overflow-auto custom-scrollbar">
-              {/* ─── BINDS LIST TAB ─── */}
-              {rightTab === "binds" && (
-                <div className="h-full flex flex-col gap-4 p-4 md:p-6">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col sm:flex-row gap-3"
-                  >
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <Input
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Buscar por tecla ou mensagem..."
-                        className="pl-9 h-10 bg-black/20 border-white/[0.05] focus:border-cyan-500/50 transition-colors"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <select
-                        value={modeFilter}
-                        onChange={(e) => setModeFilter(e.target.value as BindModeFilter)}
-                        className="h-10 rounded-md border border-white/[0.05] bg-black/20 px-3 text-sm text-slate-300 outline-none cursor-pointer hover:border-white/15 transition-colors"
-                      >
-                        <option value="all">Modo: todos</option>
-                        <option value="say">All Chat (say)</option>
-                        <option value="say_team">Team Chat (say_team)</option>
-                      </select>
-                      <Button
-                        variant={favoritesOnly ? "default" : "outline"}
-                        className={favoritesOnly ? "bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30" : "border-white/[0.05] bg-black/20 hover:bg-white/[0.05] text-slate-300"}
-                        onClick={() => setFavoritesOnly((v) => !v)}
-                      >
-                        <Star className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </motion.div>
+              <div className="h-full flex flex-col gap-4 p-4 md:p-5">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col sm:flex-row gap-3"
+                >
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Buscar por tecla ou mensagem..."
+                      className="pl-9 h-10 bg-black/20 border-white/[0.05] focus:border-cyan-500/50 transition-colors"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <select
+                      value={modeFilter}
+                      onChange={(e) => setModeFilter(e.target.value as BindModeFilter)}
+                      className="h-10 rounded-md border border-white/[0.05] bg-black/20 px-3 text-sm text-slate-300 outline-none cursor-pointer hover:border-white/15 transition-colors"
+                    >
+                      <option value="all">Modo: todos</option>
+                      <option value="say">All Chat (say)</option>
+                      <option value="say_team">Team Chat (say_team)</option>
+                    </select>
+                    <Button
+                      variant={favoritesOnly ? "default" : "outline"}
+                      className={favoritesOnly ? "bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30" : "border-white/[0.05] bg-black/20 hover:bg-white/[0.05] text-slate-300"}
+                      onClick={() => setFavoritesOnly((v) => !v)}
+                    >
+                      <Star className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.div>
 
-                  <div className="flex-1">
-                    {visibleBinds.length === 0 ? (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center text-center py-20">
-                        <div className="mb-4 h-14 w-14 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-center shadow-inner">
-                          <Search className="h-6 w-6 text-slate-500" />
-                        </div>
-                        <p className="text-base font-medium text-slate-300">Nenhum bind encontrado</p>
-                        <p className="text-sm text-slate-500 mt-1.5 max-w-sm">Crie um novo bind no painel ao lado para começar a preencher seu autoexec.</p>
-                      </motion.div>
-                    ) : (
-                      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 gap-3">
-                        {visibleBinds.map((bind) => {
-                          const isSay = bind.mode === "say";
-                          return (
-                            <motion.article
-                              key={bind.key}
-                              variants={itemVariants}
-                              layout
-                              className="group relative overflow-hidden rounded-xl border border-white/[0.05] bg-gradient-to-r from-white/[0.03] to-transparent p-4 pl-5 hover:border-white/[0.1] hover:shadow-lg hover:shadow-black/20 transition-all duration-300 cursor-pointer"
-                              onClick={() => openEdit(bind)}
-                            >
-                              {/* Gradient accent bar */}
-                              <div className={`absolute top-0 left-0 w-1 h-full ${isSay ? "bg-gradient-to-b from-cyan-400 to-cyan-600" : "bg-gradient-to-b from-violet-400 to-violet-600"}`} />
+                <div className="flex-1">
+                  {visibleBinds.length === 0 ? (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center text-center py-20">
+                      <div className="mb-4 h-14 w-14 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-center shadow-inner">
+                        <Search className="h-6 w-6 text-slate-500" />
+                      </div>
+                      <p className="text-base font-medium text-slate-300">Nenhum bind encontrado</p>
+                      <p className="text-sm text-slate-500 mt-1.5 max-w-sm">Crie um novo bind no painel ao lado para começar.</p>
+                    </motion.div>
+                  ) : (
+                    <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 gap-3">
+                      {visibleBinds.map((bind) => {
+                        const isSay = bind.mode === "say";
+                        return (
+                          <motion.article
+                            key={bind.key}
+                            variants={itemVariants}
+                            layout
+                            className="group relative overflow-hidden rounded-xl border border-white/[0.05] bg-gradient-to-r from-white/[0.03] to-transparent p-4 pl-5 hover:border-white/[0.1] hover:shadow-lg hover:shadow-black/20 transition-all duration-300 cursor-pointer"
+                            onClick={() => openEdit(bind)}
+                          >
+                            {/* Gradient accent bar */}
+                            <div className={`absolute top-0 left-0 w-1 h-full ${isSay ? "bg-gradient-to-b from-cyan-400 to-cyan-600" : "bg-gradient-to-b from-violet-400 to-violet-600"}`} />
 
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1.5">
-                                    <kbd className={`px-2 py-0.5 rounded-md border text-xs font-mono font-bold shadow-sm ${isSay ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300" : "bg-violet-500/10 border-violet-500/20 text-violet-300"}`}>
-                                      {bind.key}
-                                    </kbd>
-                                    <Badge variant="outline" className={`text-[10px] uppercase tracking-wider border-0 ${isSay ? "bg-cyan-500/10 text-cyan-400/80" : "bg-violet-500/10 text-violet-400/80"}`}>
-                                      {bind.mode.replace('_', ' ')}
-                                    </Badge>
-                                    {bind.favorite && (
-                                      <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                                    )}
-                                  </div>
-                                  <div className="text-sm text-slate-200 line-clamp-2 leading-relaxed">
-                                    <EmojiText text={bind.message} />
-                                  </div>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1.5">
+                                  <kbd className={`px-2 py-0.5 rounded-md border text-xs font-mono font-bold shadow-sm ${isSay ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300" : "bg-violet-500/10 border-violet-500/20 text-violet-300"}`}>
+                                    {bind.key}
+                                  </kbd>
+                                  <Badge variant="outline" className={`text-[10px] uppercase tracking-wider border-0 ${isSay ? "bg-cyan-500/10 text-cyan-400/80" : "bg-violet-500/10 text-violet-400/80"}`}>
+                                    {bind.mode.replace('_', ' ')}
+                                  </Badge>
+                                  {bind.favorite && (
+                                    <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                                  )}
                                 </div>
-
-                                <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                                  <button onClick={() => handleToggleFavorite(bind)} className={`p-1.5 rounded-md transition-colors ${bind.favorite ? 'text-amber-400 bg-amber-400/10' : 'text-slate-500 hover:text-amber-400 hover:bg-amber-400/10'}`}>
-                                    <Star className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button onClick={() => openDuplicate(bind)} className="p-1.5 rounded-md text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 transition-colors">
-                                    <CopyPlus className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button onClick={() => handleDelete(bind)} className="p-1.5 rounded-md text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 transition-colors">
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
+                                <div className="text-sm text-slate-200 line-clamp-2 leading-relaxed">
+                                  <EmojiText text={bind.message} />
+                                </div>
+                                {/* Raw command preview */}
+                                <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-[#0E1117]/80 border border-white/[0.04] font-mono text-[11px] text-slate-500 truncate">
+                                  <span className="text-cyan-500/70">bind</span> <span className="text-amber-400/60">"{bind.key}"</span> <span className="text-slate-500/80">"{bind.mode} {bind.message}"</span>
                                 </div>
                               </div>
-                            </motion.article>
-                          );
-                        })}
-                      </motion.div>
-                    )}
-                  </div>
-                </div>
-              )}
 
-              {/* ─── PREVIEW AUTOEXEC TAB ─── */}
-              {rightTab === "preview" && (
-                <div className="flex flex-col h-full">
-                  <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0E1117]/80 px-4 py-3 backdrop-blur-md sticky top-0 z-10">
-                    <div className="flex items-center gap-3">
-                      <div className="flex gap-1.5">
-                        <div className="h-3 w-3 rounded-full bg-rose-500/80" />
-                        <div className="h-3 w-3 rounded-full bg-amber-500/80" />
-                        <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
-                      </div>
-                      <span className="text-xs font-mono text-slate-400 tracking-wide">autoexec.cfg</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button size="icon-sm" variant="ghost" onClick={copyAutoexec} className="text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 h-8 w-8 rounded-md" title="Copiar código">
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" onClick={downloadAutoexec} className="bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-600/30 hover:text-cyan-300 h-8" title="Fazer Download do .cfg">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-auto bg-[#0E1117]/95 p-4 md:p-6 custom-scrollbar font-mono text-sm leading-[1.6]">
-                    {managedCount === 0 ? (
-                      <div className="h-full flex items-center justify-center">
-                        <p className="text-slate-600 italic">O autoexec gerado aparecerá aqui...</p>
-                      </div>
-                    ) : (
-                      <pre className="text-slate-300 w-full whitespace-pre-wrap word-break-all">
-                        {livePreviewString.split('\n').map((line, i) => {
-                          const isComment = line.trim().startsWith('//');
-                          const isBind = line.trim().startsWith('bind');
-
-                          if (isComment) {
-                            return <div key={i} className="text-emerald-500/70">{line}</div>;
-                          }
-                          if (isBind) {
-                            return (
-                              <div key={i}>
-                                <span className="text-cyan-400">bind</span>
-                                <span className="text-amber-300">{line.substring(4)}</span>
+                              <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                <button onClick={() => handleToggleFavorite(bind)} className={`p-1.5 rounded-md transition-colors ${bind.favorite ? 'text-amber-400 bg-amber-400/10' : 'text-slate-500 hover:text-amber-400 hover:bg-amber-400/10'}`}>
+                                  <Star className="h-3.5 w-3.5" />
+                                </button>
+                                <button onClick={() => openDuplicate(bind)} className="p-1.5 rounded-md text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 transition-colors">
+                                  <CopyPlus className="h-3.5 w-3.5" />
+                                </button>
+                                <button onClick={() => handleDelete(bind)} className="p-1.5 rounded-md text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 transition-colors">
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
                               </div>
-                            );
-                          }
-                          return <div key={i}>{line}</div>;
-                        })}
-                      </pre>
-                    )}
-                  </div>
+                            </div>
+                          </motion.article>
+                        );
+                      })}
+                    </motion.div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Premium Glow effect bottom */}
@@ -727,6 +656,175 @@ export default function App() {
 
         </div>
       </div>
+
+      {/* ━━━ TUTORIAL MODAL (Step Wizard) ━━━ */}
+      <AnimatePresence>
+        {showTutorial && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onClick={() => { setShowTutorial(false); setTutorialStep(0); }}
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="relative w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#0d1221]/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Gradient progress bar */}
+              <div className="h-1 bg-white/[0.05]">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-pink-500 via-violet-500 to-cyan-500"
+                  initial={{ width: "25%" }}
+                  animate={{ width: `${((tutorialStep + 1) / 4) * 100}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+
+              {/* Header */}
+              <div className="p-5 pb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-white">Como instalar</h2>
+                    <span className="text-[11px] text-slate-500 bg-white/[0.05] px-2 py-0.5 rounded-full">Passo {tutorialStep + 1} de 4</span>
+                  </div>
+                  <button onClick={() => { setShowTutorial(false); setTutorialStep(0); }} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Step content — fixed height, animated */}
+              <div className="px-5 pb-3 min-h-[200px]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={tutorialStep}
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -30 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {tutorialStep === 0 && (
+                      <div className="flex flex-col items-center text-center gap-4 py-4">
+                        <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-pink-500/20 to-pink-600/10 flex items-center justify-center border border-pink-500/20">
+                          <Sparkles className="h-7 w-7 text-pink-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-semibold text-white mb-2">Crie seus binds</h3>
+                          <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto">
+                            Use o editor para criar seus binds com emojis do Dota. Escolha a <span className="text-white font-medium">tecla de ativação</span>, o <span className="text-white font-medium">canal de chat</span>, e escreva a <span className="text-white font-medium">mensagem</span> com emojis!
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {tutorialStep === 1 && (
+                      <div className="flex flex-col items-center text-center gap-4 py-4">
+                        <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500/20 to-violet-600/10 flex items-center justify-center border border-violet-500/20">
+                          <Clipboard className="h-7 w-7 text-violet-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-semibold text-white mb-2">Copie o código</h3>
+                          <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto">
+                            Após criar seus binds, clique em <span className="text-cyan-400 font-semibold">"Copiar todos"</span> no painel de binds. Todo o código do autoexec será copiado automáticamente.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {tutorialStep === 2 && (
+                      <div className="flex flex-col items-center text-center gap-4 py-4">
+                        <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 flex items-center justify-center border border-cyan-500/20">
+                          <FolderOpen className="h-7 w-7 text-cyan-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-semibold text-white mb-2">Abra a pasta do Dota</h3>
+                          <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto mb-3">
+                            No <span className="text-white font-medium">Steam</span> → botão direito no <span className="text-white font-medium">Dota 2</span> → <span className="text-white font-medium">Gerenciar</span> → <span className="text-white font-medium">Ver arquivos locais</span>
+                          </p>
+                          <code className="inline-block text-xs text-amber-400/80 bg-black/50 border border-white/[0.06] rounded-lg px-4 py-2 font-mono">
+                            game → dota → cfg
+                          </code>
+                        </div>
+                      </div>
+                    )}
+
+                    {tutorialStep === 3 && (
+                      <div className="flex flex-col items-center text-center gap-4 py-4">
+                        <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center border border-emerald-500/20">
+                          <Terminal className="h-7 w-7 text-emerald-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-semibold text-white mb-2">Cole no autoexec.cfg</h3>
+                          <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto">
+                            Na pasta <span className="text-white font-medium">cfg</span>, abra (ou crie) o arquivo <span className="text-amber-400 font-medium">autoexec.cfg</span> com o <span className="text-white font-medium">Bloco de Notas</span>. Cole com <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white text-xs font-mono">Ctrl+V</kbd> e salve!
+                          </p>
+                          <div className="mt-3 flex items-center gap-2 justify-center p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                            <Gamepad2 className="h-4 w-4 text-emerald-400" />
+                            <span className="text-xs text-emerald-300/80 font-medium">Pronto! Abra o Dota e jogue!</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Footer: dots + navigation */}
+              <div className="flex items-center justify-between p-5 pt-2  border-t border-white/[0.04]">
+                {/* Dot indicators */}
+                <div className="flex gap-2">
+                  {[0, 1, 2, 3].map((i) => (
+                    <button
+                      key={i}
+                      onClick={() => setTutorialStep(i)}
+                      className={`h-2 rounded-full transition-all duration-300 ${i === tutorialStep ? "w-6 bg-gradient-to-r from-pink-500 to-violet-500" : "w-2 bg-white/[0.15] hover:bg-white/[0.3]"
+                        }`}
+                    />
+                  ))}
+                </div>
+
+                {/* Navigation buttons */}
+                <div className="flex gap-2">
+                  {tutorialStep > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setTutorialStep(s => s - 1)}
+                      className="text-slate-400 hover:text-white h-8"
+                    >
+                      Anterior
+                    </Button>
+                  )}
+                  {tutorialStep < 3 ? (
+                    <Button
+                      size="sm"
+                      onClick={() => setTutorialStep(s => s + 1)}
+                      className="bg-gradient-to-r from-pink-600 to-violet-600 hover:from-pink-500 hover:to-violet-500 text-white h-8 border-0"
+                    >
+                      Próximo
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => { setShowTutorial(false); setTutorialStep(0); }}
+                      className="bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white h-8 border-0"
+                    >
+                      Entendi!
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Global Toast Container */}
       <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col gap-2">
