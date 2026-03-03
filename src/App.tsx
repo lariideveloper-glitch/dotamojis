@@ -339,12 +339,49 @@ export default function App() {
   }
 
 
-  async function copyAutoexec() {
+  async function downloadAutoexec() {
+    if (!livePreviewString) {
+      showToast("Nenhum bind para salvar!");
+      return;
+    }
+
     try {
-      await navigator.clipboard.writeText(livePreviewString);
-      showToast("Autoexec copiado para a área de transferência!");
-    } catch {
-      setError("Falha ao copiar. Selecione manualmente.");
+      // Try modern File System Access API
+      if ('showSaveFilePicker' in window) {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: 'autoexec.cfg',
+          types: [{
+            description: 'Source Engine Config',
+            accept: { 'text/plain': ['.cfg'] },
+          }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(livePreviewString);
+        await writable.close();
+        showToast("Arquivo salvo com sucesso!");
+        return;
+      }
+    } catch (err: any) {
+      // User cancelled picker or another expected error
+      if (err.name === 'AbortError') return;
+      console.warn("File System Access API failed, falling back to blob", err);
+    }
+
+    // Fallback for Firefox/Safari or if API fails
+    try {
+      // Using application/octet-stream prevents Windows from appending .txt in most edge cases
+      const blob = new Blob([livePreviewString], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'autoexec.cfg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast("Download iniciado!");
+    } catch (err) {
+      setError("Falha ao salvar o arquivo.");
     }
   }
 
@@ -528,9 +565,9 @@ export default function App() {
                 </button>
               </div>
               {managedCount > 0 && (
-                <Button size="sm" onClick={copyAutoexec} className="bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-600/30 hover:text-cyan-300 h-8 text-xs">
-                  <Copy className="h-3.5 w-3.5 mr-1.5" />
-                  Copiar todos
+                <Button size="sm" onClick={downloadAutoexec} className="bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-600/30 hover:text-cyan-300 h-8 text-xs px-3">
+                  <FolderOpen className="h-3.5 w-3.5 mr-1" />
+                  Download
                 </Button>
               )}
             </div>
@@ -643,10 +680,6 @@ export default function App() {
                 <div className="h-full flex flex-col p-4 md:p-5 gap-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-slate-500">Conteúdo do seu autoexec.cfg</p>
-                    <Button size="sm" onClick={copyAutoexec} className="bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-600/30 hover:text-cyan-300 h-7 text-xs">
-                      <Copy className="h-3 w-3 mr-1.5" />
-                      Copiar
-                    </Button>
                   </div>
                   <pre className="flex-1 rounded-xl bg-[#0a0e18] border border-white/[0.05] p-4 font-mono text-xs text-slate-400 leading-relaxed overflow-auto whitespace-pre-wrap break-all custom-scrollbar">
                     {livePreviewString || <span className="text-slate-600 italic">Nenhum bind criado ainda...</span>}
@@ -732,12 +765,12 @@ export default function App() {
                     {tutorialStep === 1 && (
                       <div className="flex flex-col items-center text-center gap-4 py-4">
                         <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500/20 to-violet-600/10 flex items-center justify-center border border-violet-500/20">
-                          <Clipboard className="h-7 w-7 text-violet-400" />
+                          <FolderOpen className="h-7 w-7 text-violet-400" />
                         </div>
                         <div>
-                          <h3 className="text-base font-semibold text-white mb-2">Copie o código</h3>
+                          <h3 className="text-base font-semibold text-white mb-2">Baixe o arquivo</h3>
                           <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto">
-                            Após criar seus binds, clique em <span className="text-cyan-400 font-semibold">"Copiar todos"</span> no painel de binds. Todo o código do autoexec será copiado automáticamente.
+                            Após criar seus binds, clique no botão <span className="text-cyan-400 font-semibold">"Download"</span> no topo da lista. Salve o arquivo gerado como <span className="text-white font-medium">autoexec.cfg</span>.
                           </p>
                         </div>
                       </div>
@@ -746,15 +779,15 @@ export default function App() {
                     {tutorialStep === 2 && (
                       <div className="flex flex-col items-center text-center gap-4 py-4">
                         <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 flex items-center justify-center border border-cyan-500/20">
-                          <FolderOpen className="h-7 w-7 text-cyan-400" />
+                          <Search className="h-7 w-7 text-cyan-400" />
                         </div>
                         <div>
                           <h3 className="text-base font-semibold text-white mb-2">Abra a pasta do Dota</h3>
                           <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto mb-3">
-                            No <span className="text-white font-medium">Steam</span> → <span className="text-white font-medium">Biblioteca</span> → botão direito no <span className="text-white font-medium">Dota 2</span> → <span className="text-white font-medium">Arquivos Instalados</span> → <span className="text-white font-medium">Explorar</span>
+                            Encontre a pasta do jogo. O caminho padrão no Windows geralmente é:
                           </p>
-                          <code className="inline-block text-xs text-amber-400/80 bg-black/50 border border-white/[0.06] rounded-lg px-4 py-2 font-mono">
-                            game → dota → cfg
+                          <code className="inline-block text-[10px] text-amber-400/80 bg-black/50 border border-white/[0.06] rounded-lg px-3 py-2 font-mono break-all max-w-[280px]">
+                            C:\Program Files (x86)\Steam\steamapps\common\dota 2 beta\game\dota\cfg
                           </code>
                         </div>
                       </div>
@@ -766,9 +799,9 @@ export default function App() {
                           <Terminal className="h-7 w-7 text-emerald-400" />
                         </div>
                         <div>
-                          <h3 className="text-base font-semibold text-white mb-2">Cole no autoexec.cfg</h3>
+                          <h3 className="text-base font-semibold text-white mb-2">Cole o arquivo gerado</h3>
                           <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto">
-                            Na pasta <span className="text-white font-medium">cfg</span>, abra (ou crie) o arquivo <span className="text-amber-400 font-medium">autoexec.cfg</span> com o <span className="text-white font-medium">Bloco de Notas</span>. Cole com <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white text-xs font-mono">Ctrl+V</kbd> e salve!
+                            Basta pegar o arquivo <span className="text-amber-400 font-medium">autoexec.cfg</span> que você acabou de baixar e jogar dentro dessa pasta <span className="text-white font-medium">cfg</span> do Dota!
                           </p>
                           <div className="mt-3 flex items-center gap-2 justify-center p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
                             <Gamepad2 className="h-4 w-4 text-emerald-400" />
