@@ -166,9 +166,10 @@
   .dark-bg {
     background-color: #0a0e1a;
     background-image:
-      radial-gradient(ellipse at 15% 20%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
-      radial-gradient(ellipse at 85% 15%, rgba(139, 92, 246, 0.04) 0%, transparent 45%),
-      radial-gradient(ellipse at 50% 80%, rgba(16, 185, 129, 0.03) 0%, transparent 40%);
+      radial-gradient(ellipse at 15% 20%, rgba(244, 63, 94, 0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 15%, rgba(139, 92, 246, 0.05) 0%, transparent 45%),
+      radial-gradient(ellipse at 50% 80%, rgba(6, 182, 212, 0.04) 0%, transparent 40%),
+      radial-gradient(ellipse at 35% 55%, rgba(217, 70, 239, 0.03) 0%, transparent 35%);
   }
 
   /* Floating background particles */
@@ -188,11 +189,67 @@
     border-radius: 0.5rem;
   }
 
+  /* Premium glass with subtle glow */
+  .glass-premium {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    box-shadow:
+      0 0 40px -10px rgba(244, 63, 94, 0.08),
+      0 0 80px -20px rgba(139, 92, 246, 0.06),
+      0 20px 60px -15px rgba(0, 0, 0, 0.5);
+    transition: box-shadow 0.4s ease, border-color 0.4s ease;
+  }
+
+  .glass-premium:hover {
+    border-color: rgba(244, 63, 94, 0.15);
+    box-shadow:
+      0 0 50px -10px rgba(244, 63, 94, 0.12),
+      0 0 100px -20px rgba(139, 92, 246, 0.08),
+      0 25px 70px -15px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Right panel glass */
+  .glass-right {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    box-shadow:
+      0 0 40px -10px rgba(6, 182, 212, 0.06),
+      0 20px 60px -15px rgba(0, 0, 0, 0.5);
+    transition: box-shadow 0.4s ease, border-color 0.4s ease;
+  }
+
+  .glass-right:hover {
+    border-color: rgba(6, 182, 212, 0.12);
+    box-shadow:
+      0 0 50px -10px rgba(6, 182, 212, 0.1),
+      0 25px 70px -15px rgba(0, 0, 0, 0.6);
+  }
+
   /* Solid dark card for modals — no transparency */
   .modal-solid {
     background: #111827;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 0.5rem;
+  }
+
+  @keyframes text-pan {
+    0% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
+
+    100% {
+      background-position: 0% 50%;
+    }
   }
 
   /* Gradient text */
@@ -201,6 +258,16 @@
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+  }
+
+  .text-gradient-pink {
+    background: linear-gradient(to right, #f43f5e, #d946ef, #ec4899, #f43f5e);
+    background-size: 300% auto;
+    animation: text-pan 4s linear infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 8px rgba(244, 63, 94, 0.3));
   }
 
   /* Gradient border wrapper */
@@ -244,8 +311,9 @@
     font-weight: 500;
     color: #64748b;
     border-bottom: 2px solid transparent;
-    transition: all 0.15s ease;
+    transition: all 0.25s ease;
     cursor: pointer;
+    position: relative;
   }
 
   .tab-btn:hover {
@@ -255,5 +323,42 @@
   .tab-btn-active {
     color: #06b6d4;
     border-bottom-color: #06b6d4;
+  }
+
+  /* Header bar gradient accent line */
+  .header-accent {
+    position: relative;
+  }
+
+  .header-accent::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(to right,
+        rgba(244, 63, 94, 0.4),
+        rgba(217, 70, 239, 0.3),
+        rgba(6, 182, 212, 0.2),
+        transparent);
+  }
+
+  /* Header bar gradient accent for right panel */
+  .header-accent-cyan {
+    position: relative;
+  }
+
+  .header-accent-cyan::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(to right,
+        rgba(6, 182, 212, 0.4),
+        rgba(139, 92, 246, 0.2),
+        transparent);
   }
 }

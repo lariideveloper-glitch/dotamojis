@@ -9,28 +9,25 @@ import { Badge } from "./components/ui/badge";
 import {
   AlertTriangle,
   Copy,
-  Plus,
   Search,
-  Settings,
   Sparkles,
   Star,
   Trash2,
   Pencil,
   CopyPlus,
   X,
-  Zap,
   ListFilter,
   Download,
   Check,
   Info,
 } from "lucide-react";
-import { insertAtCursor, normalizeSearch } from "./lib/text";
+import { normalizeSearch } from "./lib/text";
 import { toDotaKeyFromKeyboardEvent, PROTECTED_KEYS } from "./lib/keymap";
 import { motion, AnimatePresence } from "framer-motion";
 import { renderManagedBlock } from "./lib/autoexec";
 
 type BindModeFilter = "all" | "say" | "say_team";
-type MainTab = "binds" | "editor" | "config";
+type RightTab = "binds" | "preview";
 
 type EditorDraft = {
   oldKey: string;
@@ -73,7 +70,7 @@ export default function App() {
   const [catalog] = useState(loadEmojiCatalog());
   const [error, setError] = useState("");
 
-  const [mainTab, setMainTab] = useState<MainTab>("binds");
+  const [rightTab, setRightTab] = useState<RightTab>("binds");
 
   const [query, setQuery] = useState("");
   const [modeFilter, setModeFilter] = useState<BindModeFilter>("all");
@@ -85,10 +82,6 @@ export default function App() {
   const [emojiSearch, setEmojiSearch] = useState("");
 
   const [keyCaptureOpen, setKeyCaptureOpen] = useState(false);
-  const [pendingCursor, setPendingCursor] = useState<number | null>(null);
-
-  const [settingsReloadCommand, setSettingsReloadCommand] = useState(store.settings.reloadCommand);
-  const [settingsReloadBindKey, setSettingsReloadBindKey] = useState(store.settings.reloadBindKey);
 
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const messageRef = useRef<RichEditorRef>(null);
@@ -196,7 +189,7 @@ export default function App() {
     let binds = [...(dashboard.snapshot?.allBinds || [])];
 
     // Inject the active editor draft for live preview
-    if (mainTab === "editor" && editorDraft.key) {
+    if (editorDraft.key) {
       const draftBind: BindEntry = {
         key: editorDraft.key,
         mode: editorDraft.mode,
@@ -223,7 +216,7 @@ export default function App() {
     }
 
     return renderManagedBlock(binds, store.settings.reloadBindKey, store.settings.reloadCommand);
-  }, [dashboard.snapshot?.allBinds, store.settings.reloadBindKey, store.settings.reloadCommand, mainTab, editorDraft]);
+  }, [dashboard.snapshot?.allBinds, store.settings.reloadBindKey, store.settings.reloadCommand, editorDraft]);
 
 
   useEffect(() => {
@@ -249,7 +242,6 @@ export default function App() {
     setEditorDraft(EMPTY_DRAFT);
     setShowEmojiPicker(false);
     setEmojiSearch("");
-    setMainTab("editor");
   }
 
   function openEdit(bind: BindEntry) {
@@ -262,7 +254,6 @@ export default function App() {
     });
     setShowEmojiPicker(false);
     setEmojiSearch("");
-    setMainTab("editor");
   }
 
   function openDuplicate(bind: BindEntry) {
@@ -274,12 +265,14 @@ export default function App() {
     });
     setShowEmojiPicker(false);
     setEmojiSearch("");
-    setMainTab("editor");
   }
 
   function handleDelete(bind: BindEntry) {
     if (!window.confirm(`Deletar bind da tecla ${bind.key}?`)) return;
     store.deleteBind(bind.key);
+    if (editorDraft.oldKey === bind.key || editorDraft.key === bind.key) {
+      openCreate();
+    }
     showToast("Bind removido!");
   }
 
@@ -299,17 +292,10 @@ export default function App() {
       }
     }
     store.upsertBind(editorDraft.oldKey, k, editorDraft.mode, editorDraft.message);
-    setMainTab("binds");
+    setRightTab("binds");
+    openCreate();
     showToast("Bind salvo com sucesso!");
     setError("");
-  }
-
-  function handleSaveSettings() {
-    store.updateSettings({
-      reloadCommand: settingsReloadCommand,
-      reloadBindKey: settingsReloadBindKey,
-    });
-    showToast("Configurações atualizadas!");
   }
 
   function insertEmoji(emoji: EmojiItem) {
@@ -350,41 +336,21 @@ export default function App() {
   return (
     <div className="dark-bg min-h-screen relative overflow-hidden flex flex-col items-center">
       {/* ── Background particles ── */}
-      <div className="bg-particle top-16 left-[8%] h-28 w-28 bg-cyan-500/[0.03] blur-2xl" />
+      <div className="bg-particle top-16 left-[8%] h-28 w-28 bg-rose-500/[0.04] blur-2xl" />
       <div
-        className="bg-particle top-32 right-[12%] h-32 w-32 bg-violet-500/[0.03] blur-3xl"
+        className="bg-particle top-32 right-[12%] h-32 w-32 bg-violet-500/[0.04] blur-3xl"
         style={{ animationDelay: "-2s" }}
       />
+      <div
+        className="bg-particle bottom-24 left-[25%] h-24 w-24 bg-cyan-500/[0.03] blur-2xl"
+        style={{ animationDelay: "-4s" }}
+      />
+      <div
+        className="bg-particle top-[45%] right-[5%] h-20 w-20 bg-pink-500/[0.03] blur-xl"
+        style={{ animationDelay: "-3s" }}
+      />
 
-      <div className="w-full max-w-7xl h-screen flex flex-col p-4 md:p-8 z-10 gap-6">
-        {/* ━━━ HEADER ━━━ */}
-        <motion.header
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500 shadow-lg shadow-cyan-500/20">
-              <Zap className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-gradient">
-                Dota Bind Studio
-              </h1>
-              <p className="text-xs text-slate-500 font-medium">
-                Modern Web Config Generator
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="border-cyan-500/20 text-cyan-400 bg-cyan-500/5 px-3 py-1">{managedCount} binds ativos</Badge>
-            <Button size="sm" onClick={openCreate} className="bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-500/20 border-0 transition-all">
-              <Plus className="h-4 w-4 mr-1.5" /> Novo bind
-            </Button>
-          </div>
-        </motion.header>
+      <div className="w-full max-w-7xl h-screen flex flex-col p-4 md:p-6 z-10 gap-4">
 
         {/* ━━━ ERROR BANNER ━━━ */}
         <AnimatePresence>
@@ -405,39 +371,205 @@ export default function App() {
         </AnimatePresence>
 
         {/* ━━━ MAIN LAYOUT (SPLIT) ━━━ */}
-        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-6">
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4">
 
-          {/* LEFT: Builder Panel */}
-          <div className="flex-1 flex flex-col min-w-0 glass rounded-2xl border border-white/[0.06] overflow-hidden shadow-2xl backdrop-blur-xl">
+          <div className="flex-1 flex flex-col min-w-0 glass-premium rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-white/[0.04] p-3 px-5 bg-white/[0.01] header-accent">
+              <div className="flex items-center gap-3">
+                <h1 className="text-lg font-extrabold tracking-tight text-gradient-pink">
+                  Dotamojis
+                </h1>
+                <span className="text-slate-600 text-sm">•</span>
+                <span className="text-xs text-slate-400 font-medium">
+                  {editorDraft.oldKey ? "Editar Bind" : "Novo Bind"}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
+                Binds com emojis para o Dota 2 ✨
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4 md:p-6 custom-scrollbar">
+              <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="max-w-3xl mx-auto space-y-6 py-2">
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tecla de Ativação</label>
+                    <button
+                      className={`w-full group relative flex h-14 items-center justify-between rounded-xl border-2 transition-all ${keyCaptureOpen ? "border-cyan-500 bg-cyan-500/5 shadow-[0_0_15px_rgba(6,182,212,0.15)]" : "border-white/[0.08] bg-black/20 hover:border-white/20"
+                        } px-4`}
+                      onClick={() => setKeyCaptureOpen(!keyCaptureOpen)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <kbd className={`flex h-8 min-w-[32px] items-center justify-center rounded-md border font-mono text-sm shadow-sm transition-colors ${editorDraft.key ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-300" : "border-white/10 bg-white/5 text-slate-400"
+                          }`}>
+                          {editorDraft.key || "?"}
+                        </kbd>
+                        <span className="text-sm font-medium text-slate-300">
+                          {keyCaptureOpen ? "Pressione a nova tecla agora... (Esc para cancelar)" : editorDraft.key ? "Clique para mudar a tecla" : "Clique para definir uma tecla"}
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Canal de Chat</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setEditorDraft(p => ({ ...p, mode: "say" }))}
+                        className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all ${editorDraft.mode === "say" ? "border-cyan-500 bg-cyan-500/10 text-cyan-300 shadow-md shadow-cyan-500/10" : "border-white/[0.05] bg-black/20 text-slate-400 hover:bg-white/5"
+                          }`}
+                      >
+                        All Chat (say)
+                      </button>
+                      <button
+                        onClick={() => setEditorDraft(p => ({ ...p, mode: "say_team" }))}
+                        className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all ${editorDraft.mode === "say_team" ? "border-violet-500 bg-violet-500/10 text-violet-300 shadow-md shadow-violet-500/10" : "border-white/[0.05] bg-black/20 text-slate-400 hover:bg-white/5"
+                          }`}
+                      >
+                        Team Chat (say_team)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Mensagem</label>
+                    <div className="relative group">
+                      <RichEditor
+                        ref={messageRef}
+                        value={editorDraft.message}
+                        onChange={(val) => setEditorDraft(p => ({ ...p, message: val }))}
+                        placeholder="Digite sua mensagem de chat roleta..."
+                        emojiMap={emojiByUnicode}
+                        className="min-h-[100px] w-full bg-black/20 border border-white/[0.08] focus:border-cyan-500/50 resize-y rounded-xl p-4 pr-36 text-sm leading-relaxed text-slate-200"
+                        onKeyDown={(e) => {
+                          if (e.altKey && e.key.toLowerCase() === "e") {
+                            e.preventDefault();
+                            setShowEmojiPicker(p => !p);
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className={`absolute top-2.5 right-2.5 flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg transition-all ${showEmojiPicker ? "bg-amber-500/20 text-amber-400 shadow-sm shadow-amber-500/10" : "text-amber-400/70 bg-black/30 hover:bg-amber-500/10 hover:text-amber-400 border border-white/[0.05]"
+                          }`}
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        Emojis
+                      </button>
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {showEmojiPicker && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="rounded-xl border border-white/[0.08] bg-black/40 shadow-inner p-4 space-y-4">
+                          <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                              <Input
+                                autoFocus
+                                value={emojiSearch}
+                                onChange={(e) => setEmojiSearch(e.target.value)}
+                                placeholder="Procurar emojis (ex: laugh, roshan)..."
+                                className="pl-9 h-9 text-sm bg-black/40 border-white/[0.05]"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-1 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                            {filteredEmojis.map((emoji) => (
+                              <button
+                                key={emoji.code}
+                                onClick={() => insertEmoji(emoji)}
+                                className="flex h-10 items-center justify-center rounded-lg bg-white/[0.02] hover:bg-cyan-500/20 hover:scale-110 active:scale-95 transition-all outline-none border border-transparent hover:border-cyan-500/30"
+                                title={emoji.name}
+                              >
+                                {emoji.gifUrl ? (
+                                  <img src={emoji.gifUrl} alt={emoji.name} className="h-6 w-6 object-contain" />
+                                ) : (
+                                  <span className="text-lg">{emoji.unicode}</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                          {filteredEmojis.length === 0 && (
+                            <p className="text-center text-sm text-slate-500 py-4">Nenhum emoji encontrado.</p>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* ─── HOW IT WORKS ─── */}
+                <div className="mt-4 rounded-xl border border-white/[0.05] bg-gradient-to-br from-white/[0.02] to-transparent p-5 space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gradient-pink">Como funciona?</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.03]">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pink-500/15 text-pink-400 text-xs font-bold">1</span>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-300">Escolha a tecla</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Clique e pressione qualquer tecla do teclado.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.03]">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-violet-400 text-xs font-bold">2</span>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-300">Escreva a mensagem</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Use emojis do Dota para personalizar!</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.03]">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-500/15 text-cyan-400 text-xs font-bold">3</span>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-300">Baixe o autoexec</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Coloque em <code className="text-slate-400">/cfg/</code> e jogue!</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* ─── STICKY FOOTER BUTTONS ─── */}
+            <div className="border-t border-white/[0.06] bg-[#0a0e1a]/80 backdrop-blur-md px-5 py-3 flex items-center justify-end gap-3 shrink-0">
+              <Button variant="ghost" onClick={openCreate} className="text-slate-400 hover:text-white">
+                Limpar
+              </Button>
+              <Button onClick={handleSaveEditor} className="bg-gradient-to-r from-pink-600 to-violet-600 hover:from-pink-500 hover:to-violet-500 text-white min-w-[120px] shadow-lg shadow-pink-500/20 transition-all border-0">
+                Salvar Bind
+              </Button>
+            </div>
+          </div>
+
+          {/* RIGHT: Binds List + Preview Panel (Tabbed) */}
+          <div className="w-full lg:w-[480px] xl:w-[560px] flex flex-col shrink-0 min-h-[400px] glass-right rounded-2xl overflow-hidden relative">
             {/* Tabs */}
-            <div className="flex items-center gap-1 border-b border-white/[0.04] p-2 bg-white/[0.01]">
+            <div className="flex items-center gap-1 border-b border-white/[0.04] p-2 bg-white/[0.01] header-accent-cyan">
               <button
-                onClick={() => setMainTab("binds")}
-                className={`tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${mainTab === "binds" ? "bg-white/[0.06] text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]"}`}
+                onClick={() => setRightTab("binds")}
+                className={`tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${rightTab === "binds" ? "bg-white/[0.06] text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]"}`}
               >
                 <ListFilter className="h-4 w-4" />
                 Meus Binds
               </button>
               <button
-                onClick={() => setMainTab("editor")}
-                className={`tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${mainTab === "editor" ? "bg-white/[0.06] text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]"}`}
+                onClick={() => setRightTab("preview")}
+                className={`tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${rightTab === "preview" ? "bg-white/[0.06] text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]"}`}
               >
-                <Pencil className="h-4 w-4" />
-                {editorDraft.oldKey ? "Editar Bind" : "Novo Bind"}
-              </button>
-              <button
-                onClick={() => setMainTab("config")}
-                className={`tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${mainTab === "config" ? "bg-white/[0.06] text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]"}`}
-              >
-                <Settings className="h-4 w-4" />
-                Configurar Reloader
+                <Copy className="h-4 w-4" />
+                Preview Autoexec
               </button>
             </div>
 
-            <div className="flex-1 overflow-auto p-4 md:p-6 custom-scrollbar">
-              {/* ─── BINDS TAB ─── */}
-              {mainTab === "binds" && (
-                <div className="h-full flex flex-col gap-4">
+            <div className="flex-1 overflow-auto custom-scrollbar">
+              {/* ─── BINDS LIST TAB ─── */}
+              {rightTab === "binds" && (
+                <div className="h-full flex flex-col gap-4 p-4 md:p-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -479,56 +611,52 @@ export default function App() {
                           <Search className="h-6 w-6 text-slate-500" />
                         </div>
                         <p className="text-base font-medium text-slate-300">Nenhum bind encontrado</p>
-                        <p className="text-sm text-slate-500 mt-1.5 max-w-sm">Crie um novo bind utilizando o botão acima para começar a preencher seu autoexec.</p>
+                        <p className="text-sm text-slate-500 mt-1.5 max-w-sm">Crie um novo bind no painel ao lado para começar a preencher seu autoexec.</p>
                       </motion.div>
                     ) : (
-                      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 gap-3">
                         {visibleBinds.map((bind) => {
-                          const used = extractEmojiItems(bind.message);
+                          const isSay = bind.mode === "say";
                           return (
                             <motion.article
                               key={bind.key}
                               variants={itemVariants}
                               layout
-                              className="group relative overflow-hidden rounded-xl border border-white/[0.04] bg-white/[0.02] p-4 hover:bg-white/[0.04] hover:border-white/[0.08] transition-all duration-300"
+                              className="group relative overflow-hidden rounded-xl border border-white/[0.05] bg-gradient-to-r from-white/[0.03] to-transparent p-4 pl-5 hover:border-white/[0.1] hover:shadow-lg hover:shadow-black/20 transition-all duration-300 cursor-pointer"
+                              onClick={() => openEdit(bind)}
                             >
-                              <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500/50 scale-y-0 group-hover:scale-y-100 origin-top transition-transform duration-300" />
+                              {/* Gradient accent bar */}
+                              <div className={`absolute top-0 left-0 w-1 h-full ${isSay ? "bg-gradient-to-b from-cyan-400 to-cyan-600" : "bg-gradient-to-b from-violet-400 to-violet-600"}`} />
 
-                              <div className="flex items-start justify-between gap-3 mb-2">
-                                <div className="flex items-center gap-2">
-                                  <kbd className="px-2 py-0.5 rounded-md bg-black/40 border border-white/10 text-xs font-mono font-medium text-cyan-300 shadow-sm">
-                                    {bind.key}
-                                  </kbd>
-                                  <Badge variant="outline" className="text-[10px] uppercase tracking-wider text-slate-400 border-white/[0.05] bg-black/20">
-                                    {bind.mode.replace('_', ' ')}
-                                  </Badge>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    <kbd className={`px-2 py-0.5 rounded-md border text-xs font-mono font-bold shadow-sm ${isSay ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300" : "bg-violet-500/10 border-violet-500/20 text-violet-300"}`}>
+                                      {bind.key}
+                                    </kbd>
+                                    <Badge variant="outline" className={`text-[10px] uppercase tracking-wider border-0 ${isSay ? "bg-cyan-500/10 text-cyan-400/80" : "bg-violet-500/10 text-violet-400/80"}`}>
+                                      {bind.mode.replace('_', ' ')}
+                                    </Badge>
+                                    {bind.favorite && (
+                                      <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                                    )}
+                                  </div>
+                                  <div className="text-sm text-slate-200 line-clamp-2 leading-relaxed">
+                                    <EmojiText text={bind.message} />
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => handleToggleFavorite(bind)} className={`p-1.5 rounded-md transition-colors ${bind.favorite ? 'text-amber-400 bg-amber-400/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>
+
+                                <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                  <button onClick={() => handleToggleFavorite(bind)} className={`p-1.5 rounded-md transition-colors ${bind.favorite ? 'text-amber-400 bg-amber-400/10' : 'text-slate-500 hover:text-amber-400 hover:bg-amber-400/10'}`}>
                                     <Star className="h-3.5 w-3.5" />
                                   </button>
-                                  <button onClick={() => openEdit(bind)} className="p-1.5 rounded-md text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 transition-colors">
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button onClick={() => openDuplicate(bind)} className="p-1.5 rounded-md text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-colors">
+                                  <button onClick={() => openDuplicate(bind)} className="p-1.5 rounded-md text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 transition-colors">
                                     <CopyPlus className="h-3.5 w-3.5" />
                                   </button>
                                   <button onClick={() => handleDelete(bind)} className="p-1.5 rounded-md text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 transition-colors">
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
-                              </div>
-
-                              <div className="text-sm text-slate-200 mt-2 line-clamp-2 leading-relaxed">
-                                <EmojiText text={bind.message} />
-                              </div>
-
-                              <div className="mt-3 flex flex-wrap gap-1.5">
-                                {used.length > 0 ? used.map(item => (
-                                  <span key={item.code} className="inline-flex h-6 w-6 items-center justify-center rounded bg-black/30 border border-white/[0.05]" title={item.name}>
-                                    {item.gifUrl ? <img src={item.gifUrl} className="h-4 w-4 object-contain" /> : <span className="text-xs">{item.unicode}</span>}
-                                  </span>
-                                )) : <span className="text-[10px] text-slate-600 font-medium">SEM EMOJIS</span>}
                               </div>
                             </motion.article>
                           );
@@ -539,226 +667,57 @@ export default function App() {
                 </div>
               )}
 
-              {/* ─── EDITOR TAB ─── */}
-              {mainTab === "editor" && (
-                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="max-w-3xl mx-auto space-y-6 py-2">
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tecla de Ativação</label>
-                      <button
-                        className={`w-full group relative flex h-14 items-center justify-between rounded-xl border-2 transition-all ${keyCaptureOpen ? "border-cyan-500 bg-cyan-500/5 shadow-[0_0_15px_rgba(6,182,212,0.15)]" : "border-white/[0.08] bg-black/20 hover:border-white/20"
-                          } px-4`}
-                        onClick={() => setKeyCaptureOpen(!keyCaptureOpen)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <kbd className={`flex h-8 min-w-[32px] items-center justify-center rounded-md border font-mono text-sm shadow-sm transition-colors ${editorDraft.key ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-300" : "border-white/10 bg-white/5 text-slate-400"
-                            }`}>
-                            {editorDraft.key || "?"}
-                          </kbd>
-                          <span className="text-sm font-medium text-slate-300">
-                            {keyCaptureOpen ? "Pressione a nova tecla agora... (Esc para cancelar)" : editorDraft.key ? "Clique para mudar a tecla" : "Clique para definir uma tecla"}
-                          </span>
-                        </div>
-                      </button>
+              {/* ─── PREVIEW AUTOEXEC TAB ─── */}
+              {rightTab === "preview" && (
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0E1117]/80 px-4 py-3 backdrop-blur-md sticky top-0 z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="flex gap-1.5">
+                        <div className="h-3 w-3 rounded-full bg-rose-500/80" />
+                        <div className="h-3 w-3 rounded-full bg-amber-500/80" />
+                        <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
+                      </div>
+                      <span className="text-xs font-mono text-slate-400 tracking-wide">autoexec.cfg</span>
                     </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Canal de Chat</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => setEditorDraft(p => ({ ...p, mode: "say" }))}
-                          className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all ${editorDraft.mode === "say" ? "border-cyan-500 bg-cyan-500/10 text-cyan-300 shadow-md shadow-cyan-500/10" : "border-white/[0.05] bg-black/20 text-slate-400 hover:bg-white/5"
-                            }`}
-                        >
-                          All Chat (say)
-                        </button>
-                        <button
-                          onClick={() => setEditorDraft(p => ({ ...p, mode: "say_team" }))}
-                          className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all ${editorDraft.mode === "say_team" ? "border-violet-500 bg-violet-500/10 text-violet-300 shadow-md shadow-violet-500/10" : "border-white/[0.05] bg-black/20 text-slate-400 hover:bg-white/5"
-                            }`}
-                        >
-                          Team Chat (say_team)
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Mensagem</label>
-                        <button
-                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                          className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md transition-colors ${showEmojiPicker ? "bg-amber-500/20 text-amber-400" : "text-amber-400/80 hover:bg-amber-500/10 hover:text-amber-400"
-                            }`}
-                        >
-                          <Sparkles className="h-3.5 w-3.5" />
-                          Dota Emojis (Alt+E)
-                        </button>
-                      </div>
-                      <div className="relative group">
-                        <RichEditor
-                          ref={messageRef}
-                          value={editorDraft.message}
-                          onChange={(val) => setEditorDraft(p => ({ ...p, message: val }))}
-                          placeholder="Digite sua mensagem de chat roleta..."
-                          emojiMap={emojiByUnicode}
-                          className="min-h-[100px] w-full bg-black/20 border border-white/[0.08] focus:border-cyan-500/50 resize-y rounded-xl p-4 text-sm leading-relaxed text-slate-200"
-                          onKeyDown={(e) => {
-                            if (e.altKey && e.key.toLowerCase() === "e") {
-                              e.preventDefault();
-                              setShowEmojiPicker(p => !p);
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <AnimatePresence>
-                      {showEmojiPicker && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="rounded-xl border border-white/[0.08] bg-black/40 shadow-inner p-4 space-y-4">
-                            <div className="flex items-center gap-2">
-                              <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                                <Input
-                                  autoFocus
-                                  value={emojiSearch}
-                                  onChange={(e) => setEmojiSearch(e.target.value)}
-                                  placeholder="Procurar emojis (ex: laugh, roshan)..."
-                                  className="pl-9 h-9 text-sm bg-black/40 border-white/[0.05]"
-                                />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-1 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
-                              {filteredEmojis.map((emoji) => (
-                                <button
-                                  key={emoji.code}
-                                  onClick={() => insertEmoji(emoji)}
-                                  className="flex h-10 items-center justify-center rounded-lg bg-white/[0.02] hover:bg-cyan-500/20 hover:scale-110 active:scale-95 transition-all outline-none border border-transparent hover:border-cyan-500/30"
-                                  title={emoji.name}
-                                >
-                                  {emoji.gifUrl ? (
-                                    <img src={emoji.gifUrl} alt={emoji.name} className="h-6 w-6 object-contain" />
-                                  ) : (
-                                    <span className="text-lg">{emoji.unicode}</span>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                            {filteredEmojis.length === 0 && (
-                              <p className="text-center text-sm text-slate-500 py-4">Nenhum emoji encontrado.</p>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  <div className="pt-6 border-t border-white/[0.04] flex items-center justify-end gap-3">
-                    <Button variant="ghost" onClick={() => setMainTab("binds")} className="text-slate-400 hover:text-white">
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleSaveEditor} className="bg-cyan-600 hover:bg-cyan-500 text-white min-w-[120px]">
-                      Salvar Bind
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* ─── CONFIG TAB ─── */}
-              {mainTab === "config" && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto space-y-8 py-4">
-                  <div className="space-y-4">
-                    <h2 className="text-lg font-semibold text-white">Configurações de Reload</h2>
-                    <p className="text-sm text-slate-400 leading-relaxed">
-                      O Dota precisa recarregar o arquivo <code className="text-slate-300">autoexec.cfg</code> para aplicar os novos binds.
-                      Nós adicionamos um "bind de reload" no seu arquivo para você não precisar digitar no console toda vez.
-                    </p>
-
-                    <div className="space-y-4 rounded-xl border border-white/[0.08] bg-black/20 p-5 mt-4">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tecla de Reload</label>
-                        <Input
-                          value={settingsReloadBindKey}
-                          onChange={(e) => setSettingsReloadBindKey(e.target.value)}
-                          placeholder="F10"
-                          className="bg-black/30 border-white/[0.05]"
-                        />
-                        <p className="text-[11px] text-slate-500 mt-1">Tecla usada para recarregar o autoexec in-game.</p>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Comando de Reload</label>
-                        <Input
-                          value={settingsReloadCommand}
-                          onChange={(e) => setSettingsReloadCommand(e.target.value)}
-                          placeholder="exec autoexec.cfg"
-                          className="bg-black/30 border-white/[0.05]"
-                        />
-                      </div>
-
-                      <Button onClick={handleSaveSettings} className="w-full sm:w-auto mt-4">
-                        Salvar Configurações
+                    <div className="flex items-center gap-2">
+                      <Button size="icon-sm" variant="ghost" onClick={copyAutoexec} className="text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 h-8 w-8 rounded-md" title="Copiar código">
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" onClick={downloadAutoexec} className="bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-600/30 hover:text-cyan-300 h-8" title="Fazer Download do .cfg">
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
                       </Button>
                     </div>
                   </div>
-                </motion.div>
-              )}
-            </div>
-          </div>
 
-          {/* RIGHT: Live Preview Panel (Code Aesthetic) */}
-          <div className="w-full lg:w-[480px] xl:w-[560px] flex flex-col shrink-0 min-h-[400px] glass rounded-2xl border border-white/[0.06] overflow-hidden shadow-2xl backdrop-blur-xl relative group">
-            <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0E1117]/80 px-4 py-3 backdrop-blur-md sticky top-0 z-10">
-              <div className="flex items-center gap-3">
-                <div className="flex gap-1.5">
-                  <div className="h-3 w-3 rounded-full bg-rose-500/80" />
-                  <div className="h-3 w-3 rounded-full bg-amber-500/80" />
-                  <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
+                  <div className="flex-1 overflow-auto bg-[#0E1117]/95 p-4 md:p-6 custom-scrollbar font-mono text-sm leading-[1.6]">
+                    {managedCount === 0 ? (
+                      <div className="h-full flex items-center justify-center">
+                        <p className="text-slate-600 italic">O autoexec gerado aparecerá aqui...</p>
+                      </div>
+                    ) : (
+                      <pre className="text-slate-300 w-full whitespace-pre-wrap word-break-all">
+                        {livePreviewString.split('\n').map((line, i) => {
+                          const isComment = line.trim().startsWith('//');
+                          const isBind = line.trim().startsWith('bind');
+
+                          if (isComment) {
+                            return <div key={i} className="text-emerald-500/70">{line}</div>;
+                          }
+                          if (isBind) {
+                            return (
+                              <div key={i}>
+                                <span className="text-cyan-400">bind</span>
+                                <span className="text-amber-300">{line.substring(4)}</span>
+                              </div>
+                            );
+                          }
+                          return <div key={i}>{line}</div>;
+                        })}
+                      </pre>
+                    )}
+                  </div>
                 </div>
-                <span className="text-xs font-mono text-slate-400 tracking-wide">autoexec.cfg</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button size="icon-sm" variant="ghost" onClick={copyAutoexec} className="text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 h-8 w-8 rounded-md" title="Copiar código">
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Button size="sm" onClick={downloadAutoexec} className="bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-600/30 hover:text-cyan-300 h-8" title="Fazer Download do .cfg">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto bg-[#0E1117]/95 p-4 md:p-6 custom-scrollbar font-mono text-sm leading-[1.6]">
-              {managedCount === 0 ? (
-                <div className="h-full flex items-center justify-center">
-                  <p className="text-slate-600 italic">O autoexec gerado aparecerá aqui...</p>
-                </div>
-              ) : (
-                <pre className="text-slate-300 w-full whitespace-pre-wrap word-break-all">
-                  {livePreviewString.split('\n').map((line, i) => {
-                    const isComment = line.trim().startsWith('//');
-                    const isBind = line.trim().startsWith('bind');
-
-                    if (isComment) {
-                      return <div key={i} className="text-emerald-500/70">{line}</div>;
-                    }
-                    if (isBind) {
-                      // rough simplistic syntax highlighting
-                      return (
-                        <div key={i}>
-                          <span className="text-cyan-400">bind</span>
-                          <span className="text-amber-300">{line.substring(4)}</span>
-                        </div>
-                      );
-                    }
-                    return <div key={i}>{line}</div>;
-                  })}
-                </pre>
               )}
             </div>
 
