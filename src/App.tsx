@@ -22,8 +22,6 @@ import {
   Terminal,
   Gamepad2,
   Clipboard,
-  Heart,
-  MessageCircle,
   Smile,
   ShieldCheck,
   ExternalLink,
@@ -976,7 +974,7 @@ export default function App() {
                       onClick={() => { setShowWelcome(false); if (dontShowAgain) localStorage.setItem('dotamojis_welcomed', '1'); }}
                       className="bg-gradient-to-r from-pink-600 to-violet-600 hover:from-pink-500 hover:to-violet-500 text-white h-8 border-0"
                     >
-                      Começar! ✨
+                      Começar!
                     </Button>
                   )}
                 </div>
